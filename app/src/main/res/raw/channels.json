@@ -1,0 +1,17 @@
+[
+  {"number": 1, "name": "CCTV-1 综合", "url": "https://tv.cctv.com/live/cctv1/", "category": "CCTV", "logo": null},
+  {"number": 2, "name": "CCTV-2 财经", "url": "https://tv.cctv.com/live/cctv2/", "category": "CCTV", "logo": null},
+  {"number": 3, "name": "CCTV-3 综艺", "url": "https://tv.cctv.com/live/cctv3/", "category": "CCTV", "logo": null},
+  {"number": 4, "name": "CCTV-4 中文国际", "url": "https://tv.cctv.com/live/cctv4/", "category": "CCTV", "logo": null},
+  {"number": 5, "name": "CCTV-5 体育", "url": "https://tv.cctv.com/live/cctv5/", "category": "CCTV", "logo": null},
+  {"number": 6, "name": "CCTV-6 电影", "url": "https://tv.cctv.com/live/cctv6/", "category": "CCTV", "logo": null},
+  {"number": 7, "name": "CCTV-7 国防军事", "url": "https://tv.cctv.com/live/cctv7/", "category": "CCTV", "logo": null},
+  {"number": 8, "name": "CCTV-8 电视剧", "url": "https://tv.cctv.com/live/cctv8/", "category": "CCTV", "logo": null},
+  {"number": 9, "name": "CCTV-9 纪录", "url": "https://tv.cctv.com/live/cctvjilu", "category": "CCTV", "logo": null},
+  {"number": 10, "name": "CCTV-10 科教", "url": "https://tv.cctv.com/live/cctv10/", "category": "CCTV", "logo": null},
+  {"number": 21, "name": "北京卫视", "url": "https://www.yangshipin.cn/tv/home?pid=600002309", "category": "LOCAL", "logo": null},
+  {"number": 22, "name": "江苏卫视", "url": "https://www.yangshipin.cn/tv/home?pid=600002521", "category": "LOCAL", "logo": null},
+  {"number": 23, "name": "东方卫视", "url": "https://www.yangshipin.cn/tv/home?pid=600002483", "category": "LOCAL", "logo": null},
+  {"number": 24, "name": "浙江卫视", "url": "https://www.yangshipin.cn/tv/home?pid=600002520", "category": "LOCAL", "logo": null},
+  {"number": 25, "name": "湖南卫视", "url": "https://www.yangshipin.cn/tv/home?pid=600002475", "category": "LOCAL", "logo": null}
+]
