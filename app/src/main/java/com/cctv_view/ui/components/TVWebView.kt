@@ -21,30 +21,48 @@ fun TVWebView(
 ) {
     val context = LocalContext.current
 
-    // 使用 remember 保存 WebView 实例
     val webView = remember {
         WebView(context).apply {
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
-                // databaseEnabled 已废弃，但为了兼容性保留
-                @Suppress("DEPRECATION")
-                databaseEnabled = true
                 loadsImagesAutomatically = false
                 blockNetworkImage = true
                 mediaPlaybackRequiresUserGesture = false
-                userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (HTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+                userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+
+                // 缓存设置 - 使用新版 API
                 cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+
                 javaScriptCanOpenWindowsAutomatically = true
                 setSupportZoom(false)
                 builtInZoomControls = false
                 displayZoomControls = false
+                useWideViewPort = true
+                loadWithOverviewMode = true
             }
 
             // 混合内容模式（Android 5.0+）
-            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            }
 
             webViewClient = object : WebViewClient() {
+                override fun onReceivedError(
+                    view: WebView?,
+                    errorCode: Int,
+                    description: String?,
+                    failingUrl: String?
+                ) {
+                    super.onReceivedError(view, errorCode, description, failingUrl)
+                    // ERR_CACHE_MISS 错误时重试
+                    if (errorCode == -1) {
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            failingUrl?.let { view?.loadUrl(it) }
+                        }, 500)
+                    }
+                }
+
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
                     if (url == "about:blank") return
@@ -92,7 +110,6 @@ fun TVWebView(
         }
     }
 
-    // 当 channel 变化时加载新 URL
     LaunchedEffect(channel) {
         channel?.let {
             webView.loadUrl(it.url)
