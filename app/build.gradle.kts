@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "com.cctv_view"
-        minSdk = 21
+        minSdk = 23
         //noinspection OldTargetApi
         targetSdk = 36
         versionCode = 1
