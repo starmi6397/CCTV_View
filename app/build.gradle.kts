@@ -53,8 +53,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
     // Compose TV 支持
-    implementation("androidx.tv:tv-material:1.0.0")
-    implementation("androidx.tv:tv-foundation:1.0.0")
+    implementation(libs.androidx.tv.material)
+    implementation(libs.androidx.tv.foundation)
 
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
