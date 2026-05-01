@@ -3,6 +3,8 @@ package com.cctv_view
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +32,14 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+
+        // 调试：在 Activity 层面捕获按键
+        window.decorView.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                Log.d("MainActivity", "Activity 捕获按键: $keyCode")
+            }
+            false // 返回 false 让事件继续传递
         }
     }
 

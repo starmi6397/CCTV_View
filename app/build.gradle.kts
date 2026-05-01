@@ -52,6 +52,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+    implementation(libs.androidx.compose.material3)
 
     // Compose TV 支持
     implementation(libs.androidx.tv.material)
@@ -67,6 +68,7 @@ dependencies {
     // JSON 解析
     implementation("com.google.code.gson:gson:2.10.1")
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.ui)
 
     // 调试
     debugImplementation("androidx.compose.ui:ui-tooling")
