@@ -5,8 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,7 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,6 +26,7 @@ data class MenuItem(
     val onClick: () -> Unit
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MenuOverlay(
     items: List<MenuItem>,
@@ -35,8 +36,13 @@ fun MenuOverlay(
 ) {
     if (!isVisible) return
 
-    val focusRequester = remember { FocusRequester() }
     var selectedIndex by remember { mutableIntStateOf(0) }
+    val focusRequester = remember { FocusRequester() }
+
+    // 处理键盘导航
+    fun navigate(direction: Int) {
+        selectedIndex = ((selectedIndex + direction) % items.size + items.size) % items.size
+    }
 
     Box(
         modifier = modifier
@@ -49,7 +55,32 @@ fun MenuOverlay(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(32.dp)
-                .shadow(8.dp),
+                .shadow(8.dp)
+                .focusRequester(focusRequester)
+                .focusable()
+                .onKeyEvent { event ->
+                    when (event.nativeKeyEvent.keyCode) {
+                        android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                            navigate(-1)
+                            true
+                        }
+                        android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            navigate(1)
+                            true
+                        }
+                        android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                        android.view.KeyEvent.KEYCODE_ENTER -> {
+                            items[selectedIndex].onClick()
+                            onDismiss()
+                            true
+                        }
+                        android.view.KeyEvent.KEYCODE_BACK -> {
+                            onDismiss()
+                            true
+                        }
+                        else -> false
+                    }
+                },
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
@@ -57,9 +88,7 @@ fun MenuOverlay(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
-                    .focusRequester(focusRequester)
-                    .focusable(),
+                    .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 items.forEachIndexed { index, item ->
@@ -69,7 +98,10 @@ fun MenuOverlay(
                         onClick = {
                             item.onClick()
                             onDismiss()
-                        }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(4.dp)
                     )
                 }
             }
@@ -85,24 +117,55 @@ fun MenuOverlay(
 fun MenuButton(
     item: MenuItem,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .size(100.dp, 80.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
-        )
+    var hasFocus by remember { mutableStateOf(false) }
+
+    Surface(
+        modifier = modifier
+            .height(80.dp)
+            .focusable()
+            .onFocusChanged { focusState ->
+                hasFocus = focusState.isFocused
+            }
+            .onKeyEvent {
+                if (it.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+                    it.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            },
+        shape = RoundedCornerShape(12.dp),
+        color = when {
+            isSelected -> MaterialTheme.colorScheme.primary
+            hasFocus -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+            else -> MaterialTheme.colorScheme.surfaceVariant
+        },
+        tonalElevation = if (isSelected || hasFocus) 0.dp else 4.dp,
+        onClick = onClick
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
         ) {
-            item.icon()
-            Text(item.name, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Box(modifier = Modifier.size(32.dp)) {
+                item.icon()
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                item.name,
+                fontSize = 14.sp,
+                fontWeight = if (isSelected || hasFocus) FontWeight.Bold else FontWeight.Medium,
+                color = when {
+                    isSelected -> Color.White
+                    hasFocus -> Color.White
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
+            )
         }
     }
 }

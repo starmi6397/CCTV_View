@@ -15,7 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +40,18 @@ fun ChannelListDrawer(
     if (!isVisible) return
 
     val focusRequester = remember { FocusRequester() }
+    var tabIndex by remember { mutableIntStateOf(if (selectedCategory == ChannelCategory.CCTV) 0 else 1) }
+    val channels = if (tabIndex == 0) cctvChannels else localChannels
+    val listState = rememberLazyListState()
+    var selectedChannelIndex by remember { mutableIntStateOf(channels.indexOfFirst { it.id == currentChannelId }.coerceAtLeast(0)) }
+
+    // 当分类改变时更新选中索引
+    LaunchedEffect(tabIndex) {
+        val newList = if (tabIndex == 0) cctvChannels else localChannels
+        val newIndex = newList.indexOfFirst { it.id == currentChannelId }.coerceAtLeast(0)
+        selectedChannelIndex = newIndex
+        listState.scrollToItem(newIndex)
+    }
 
     Box(
         modifier = modifier
@@ -50,16 +64,24 @@ fun ChannelListDrawer(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(400.dp)
-                .shadow(8.dp),
+                .shadow(8.dp)
+                .focusRequester(focusRequester)
+                .focusable()
+                .onKeyEvent { event ->
+                    when (event.nativeKeyEvent.keyCode) {
+                        android.view.KeyEvent.KEYCODE_BACK -> {
+                            onDismiss()
+                            true
+                        }
+                        else -> false
+                    }
+                },
             shape = RoundedCornerShape(0.dp, 16.dp, 16.dp, 0.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .focusRequester(focusRequester)
-                    .focusable()
+                modifier = Modifier.fillMaxSize()
             ) {
                 // 标题
                 Text(
@@ -74,30 +96,28 @@ fun ChannelListDrawer(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TabRow(
-                        selectedTabIndex = if (selectedCategory == ChannelCategory.CCTV) 0 else 1,
-                        containerColor = Color.Transparent,
-                        indicator = {},
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        listOf("央视频道", "地方频道").forEachIndexed { index, title ->
-                            Tab(
-                                selected = (selectedCategory == ChannelCategory.CCTV && index == 0) ||
-                                        (selectedCategory == ChannelCategory.LOCAL && index == 1),
-                                onClick = {
-                                    onCategorySelected(if (index == 0) ChannelCategory.CCTV else ChannelCategory.LOCAL)
-                                },
-                                text = {
-                                    Text(
-                                        title,
-                                        fontSize = 18.sp,
-                                        fontWeight = if ((selectedCategory == ChannelCategory.CCTV && index == 0) ||
-                                            (selectedCategory == ChannelCategory.LOCAL && index == 1)) FontWeight.Bold
-                                        else FontWeight.Normal
-                                    )
-                                }
+                    listOf("央视频道", "地方频道").forEachIndexed { index, title ->
+                        val isSelected = tabIndex == index
+                        Button(
+                            onClick = {
+                                tabIndex = index
+                                onCategorySelected(if (index == 0) ChannelCategory.CCTV else ChannelCategory.LOCAL)
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (isSelected) Color.White
+                                else MaterialTheme.colorScheme.onSurface
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                title,
+                                fontSize = 16.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                         }
                     }
@@ -105,27 +125,26 @@ fun ChannelListDrawer(
 
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
-                // 频道列表
-                val channels = if (selectedCategory == ChannelCategory.CCTV) cctvChannels else localChannels
-                val listState = rememberLazyListState()
-
-                LaunchedEffect(selectedCategory) {
-                    val index = channels.indexOfFirst { it.id == currentChannelId }
-                    if (index >= 0) {
-                        listState.scrollToItem(index)
-                    }
-                }
-
+                // 频道列表 - 使用内置的 items 函数
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    items(channels) { channel ->
+                    items(
+                        items = channels,
+                        key = { channel -> channel.id }
+                    ) { channel ->
+                        val index = channels.indexOf(channel)
                         ChannelListItem(
                             channel = channel,
                             isSelected = channel.id == currentChannelId,
-                            onClick = { onChannelSelected(channel) }
+                            isFocused = selectedChannelIndex == index,
+                            onClick = {
+                                onChannelSelected(channel)
+                                onDismiss()
+                            },
+                            onFocus = { selectedChannelIndex = index }
                         )
                     }
                 }
@@ -142,15 +161,35 @@ fun ChannelListDrawer(
 fun ChannelListItem(
     channel: Channel,
     isSelected: Boolean,
-    onClick: () -> Unit
+    isFocused: Boolean,
+    onClick: () -> Unit,
+    onFocus: () -> Unit
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .focusable()
+            .onFocusChanged { focusState ->
+                if (focusState.isFocused) {
+                    onFocus()
+                }
+            }
+            .onKeyEvent {
+                if (it.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+                    it.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            },
         shape = RoundedCornerShape(8.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-        else Color.Transparent,
+        color = when {
+            isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+            isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+            else -> Color.Transparent
+        },
         onClick = onClick
     ) {
         Row(
@@ -162,8 +201,12 @@ fun ChannelListItem(
             Text(
                 text = "${channel.number}  ${channel.name}",
                 fontSize = 18.sp,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                color = when {
+                    isFocused -> Color.White
+                    isSelected -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+                fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal
             )
             if (isSelected) {
                 Text("▶", color = MaterialTheme.colorScheme.primary, fontSize = 18.sp)

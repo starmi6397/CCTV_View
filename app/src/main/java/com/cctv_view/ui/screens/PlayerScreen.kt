@@ -2,6 +2,8 @@ package com.cctv_view.ui.screens
 
 import android.util.Log
 import android.view.KeyEvent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -17,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -187,12 +190,21 @@ fun PlayerScreen(
         )
 
         // 菜单
-        MenuOverlay(
-            items = menuItems,
-            isVisible = uiState.showMenu,
-            onDismiss = { viewModel.hideAllOverlays() },
-            modifier = Modifier
-        )
+        if (uiState.showMenu) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable { viewModel.hideAllOverlays() }
+            ) {
+                MenuOverlay(
+                    items = menuItems,
+                    isVisible = true,
+                    onDismiss = { viewModel.hideAllOverlays() },
+                    modifier = Modifier
+                )
+            }
+        }
 
         // 测试按钮 - 确认界面是否正常
         Button(
