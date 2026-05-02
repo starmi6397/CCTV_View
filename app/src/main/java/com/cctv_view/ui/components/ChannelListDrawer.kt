@@ -21,6 +21,7 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.cctv_view.data.Channel
 import com.cctv_view.data.ChannelCategory
 
@@ -40,17 +41,38 @@ fun ChannelListDrawer(
     if (!isVisible) return
 
     val focusRequester = remember { FocusRequester() }
+    val coroutineScope = rememberCoroutineScope()
     var tabIndex by remember { mutableIntStateOf(if (selectedCategory == ChannelCategory.CCTV) 0 else 1) }
     val channels = if (tabIndex == 0) cctvChannels else localChannels
     val listState = rememberLazyListState()
-    var selectedChannelIndex by remember { mutableIntStateOf(channels.indexOfFirst { it.id == currentChannelId }.coerceAtLeast(0)) }
+
+    // 找到当前频道的初始索引
+    val initialIndex = remember(currentChannelId, tabIndex) {
+        channels.indexOfFirst { it.id == currentChannelId }.coerceAtLeast(0)
+    }
+
+    var selectedChannelIndex by remember { mutableIntStateOf(initialIndex) }
+
+    // 防止重复移动
+    var lastKeyTime by remember { mutableLongStateOf(0L) }
 
     // 当分类改变时更新选中索引
     LaunchedEffect(tabIndex) {
         val newList = if (tabIndex == 0) cctvChannels else localChannels
         val newIndex = newList.indexOfFirst { it.id == currentChannelId }.coerceAtLeast(0)
         selectedChannelIndex = newIndex
-        listState.scrollToItem(newIndex)
+        coroutineScope.launch {
+            listState.animateScrollToItem(newIndex)
+        }
+    }
+
+    // 当当前频道变化时更新选中索引
+    LaunchedEffect(currentChannelId) {
+        val newIndex = channels.indexOfFirst { it.id == currentChannelId }.coerceAtLeast(0)
+        selectedChannelIndex = newIndex
+        coroutineScope.launch {
+            listState.animateScrollToItem(newIndex)
+        }
     }
 
     Box(
@@ -66,16 +88,7 @@ fun ChannelListDrawer(
                 .width(400.dp)
                 .shadow(8.dp)
                 .focusRequester(focusRequester)
-                .focusable()
-                .onKeyEvent { event ->
-                    when (event.nativeKeyEvent.keyCode) {
-                        android.view.KeyEvent.KEYCODE_BACK -> {
-                            onDismiss()
-                            true
-                        }
-                        else -> false
-                    }
-                },
+                .focusable(),
             shape = RoundedCornerShape(0.dp, 16.dp, 16.dp, 0.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
@@ -125,10 +138,54 @@ fun ChannelListDrawer(
 
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
-                // 频道列表 - 使用内置的 items 函数
+                // 频道列表
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onKeyEvent { event ->
+                            when (event.nativeKeyEvent.keyCode) {
+                                android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                                    val currentTime = System.currentTimeMillis()
+                                    if (currentTime - lastKeyTime > 150) {
+                                        lastKeyTime = currentTime
+                                        if (selectedChannelIndex > 0) {
+                                            selectedChannelIndex--
+                                            coroutineScope.launch {
+                                                listState.animateScrollToItem(selectedChannelIndex)
+                                            }
+                                        }
+                                    }
+                                    true
+                                }
+                                android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                                    val currentTime = System.currentTimeMillis()
+                                    if (currentTime - lastKeyTime > 150) {
+                                        lastKeyTime = currentTime
+                                        if (selectedChannelIndex < channels.size - 1) {
+                                            selectedChannelIndex++
+                                            coroutineScope.launch {
+                                                listState.animateScrollToItem(selectedChannelIndex)
+                                            }
+                                        }
+                                    }
+                                    true
+                                }
+                                android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                                android.view.KeyEvent.KEYCODE_ENTER -> {
+                                    if (selectedChannelIndex in channels.indices) {
+                                        onChannelSelected(channels[selectedChannelIndex])
+                                        onDismiss()
+                                    }
+                                    true
+                                }
+                                android.view.KeyEvent.KEYCODE_BACK -> {
+                                    onDismiss()
+                                    true
+                                }
+                                else -> false
+                            }
+                        },
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     items(
@@ -144,7 +201,14 @@ fun ChannelListDrawer(
                                 onChannelSelected(channel)
                                 onDismiss()
                             },
-                            onFocus = { selectedChannelIndex = index }
+                            onFocus = {
+                                if (selectedChannelIndex != index) {
+                                    selectedChannelIndex = index
+                                    coroutineScope.launch {
+                                        listState.animateScrollToItem(index)
+                                    }
+                                }
+                            }
                         )
                     }
                 }
@@ -165,6 +229,16 @@ fun ChannelListItem(
     onClick: () -> Unit,
     onFocus: () -> Unit
 ) {
+    var lastClickTime by remember { mutableLongStateOf(0L) }
+
+    val handleClick = {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastClickTime > 300) {
+            lastClickTime = currentTime
+            onClick()
+        }
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -174,15 +248,6 @@ fun ChannelListItem(
                 if (focusState.isFocused) {
                     onFocus()
                 }
-            }
-            .onKeyEvent {
-                if (it.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
-                    it.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
-                    onClick()
-                    true
-                } else {
-                    false
-                }
             },
         shape = RoundedCornerShape(8.dp),
         color = when {
@@ -190,7 +255,7 @@ fun ChannelListItem(
             isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
             else -> Color.Transparent
         },
-        onClick = onClick
+        onClick = handleClick
     ) {
         Row(
             modifier = Modifier

@@ -21,16 +21,26 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CCTV_View"
         android:usesCleartextTraffic="true">
+
+        <!-- 主 Activity -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:hardwareAccelerated="true"
+            android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 设置 Activity - 修复：添加正确的路径 -->
+        <activity
+            android:name=".ui.screens.SettingsActivity"
+            android:exported="false"
+            android:hardwareAccelerated="true" />
+
     </application>
 
 </manifest>

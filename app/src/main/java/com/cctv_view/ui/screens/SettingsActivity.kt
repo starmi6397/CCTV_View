@@ -1,4 +1,4 @@
-package com.cctv_view.ui
+package com.cctv_view.ui.screens
 
 import android.content.Context
 import android.os.Bundle
@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,7 +38,7 @@ class SettingsActivity : ComponentActivity() {
 fun SettingsScreen(
     onBack: () -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val prefs = context.getSharedPreferences("cctv_view", Context.MODE_PRIVATE)
 
     var fontSize by remember {

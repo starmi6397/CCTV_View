@@ -39,8 +39,16 @@ fun MenuOverlay(
     var selectedIndex by remember { mutableIntStateOf(0) }
     val focusRequester = remember { FocusRequester() }
 
+    // 防止重复移动的标记
+    var lastKeyTime by remember { mutableLongStateOf(0L) }
+
     // 处理键盘导航
     fun navigate(direction: Int) {
+        val currentTime = System.currentTimeMillis()
+        // 如果距离上次按键小于 200ms，忽略（防抖）
+        if (currentTime - lastKeyTime < 200) return
+        lastKeyTime = currentTime
+
         selectedIndex = ((selectedIndex + direction) % items.size + items.size) % items.size
     }
 
@@ -57,30 +65,7 @@ fun MenuOverlay(
                 .padding(32.dp)
                 .shadow(8.dp)
                 .focusRequester(focusRequester)
-                .focusable()
-                .onKeyEvent { event ->
-                    when (event.nativeKeyEvent.keyCode) {
-                        android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
-                            navigate(-1)
-                            true
-                        }
-                        android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            navigate(1)
-                            true
-                        }
-                        android.view.KeyEvent.KEYCODE_DPAD_CENTER,
-                        android.view.KeyEvent.KEYCODE_ENTER -> {
-                            items[selectedIndex].onClick()
-                            onDismiss()
-                            true
-                        }
-                        android.view.KeyEvent.KEYCODE_BACK -> {
-                            onDismiss()
-                            true
-                        }
-                        else -> false
-                    }
-                },
+                .focusable(),
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
@@ -88,7 +73,30 @@ fun MenuOverlay(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .onKeyEvent { event ->
+                        when (event.nativeKeyEvent.keyCode) {
+                            android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                                navigate(-1)
+                                true
+                            }
+                            android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                navigate(1)
+                                true
+                            }
+                            android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                            android.view.KeyEvent.KEYCODE_ENTER -> {
+                                items[selectedIndex].onClick()
+                                onDismiss()
+                                true
+                            }
+                            android.view.KeyEvent.KEYCODE_BACK -> {
+                                onDismiss()
+                                true
+                            }
+                            else -> false
+                        }
+                    },
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 items.forEachIndexed { index, item ->
@@ -122,21 +130,23 @@ fun MenuButton(
 ) {
     var hasFocus by remember { mutableStateOf(false) }
 
+    // 防止按钮自身重复触发
+    var lastClickTime by remember { mutableLongStateOf(0L) }
+
+    val handleClick = {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastClickTime > 300) {
+            lastClickTime = currentTime
+            onClick()
+        }
+    }
+
     Surface(
         modifier = modifier
             .height(80.dp)
             .focusable()
             .onFocusChanged { focusState ->
                 hasFocus = focusState.isFocused
-            }
-            .onKeyEvent {
-                if (it.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
-                    it.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
-                    onClick()
-                    true
-                } else {
-                    false
-                }
             },
         shape = RoundedCornerShape(12.dp),
         color = when {
@@ -145,7 +155,7 @@ fun MenuButton(
             else -> MaterialTheme.colorScheme.surfaceVariant
         },
         tonalElevation = if (isSelected || hasFocus) 0.dp else 4.dp,
-        onClick = onClick
+        onClick = handleClick
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

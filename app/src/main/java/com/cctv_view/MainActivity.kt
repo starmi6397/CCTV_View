@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.cctv_view.ui.screens.PlayerScreen
-import com.cctv_view.ui.SettingsActivity
+import com.cctv_view.ui.screens.SettingsActivity
 import com.cctv_view.ui.theme.CCTVViewTheme
 import com.cctv_view.viewmodel.MainViewModel
 
